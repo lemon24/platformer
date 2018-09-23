@@ -11,6 +11,12 @@ class GraphicsComponent(abc.ABC):
     def render(self, offset_x, offset_y):
         raise NotImplementedError
 
+class InputComponent(abc.ABC):
+
+    @abc.abstractmethod
+    def process_input(self):
+        raise NotImplementedError
+
 
 @attr.s
 class Rect:
@@ -101,7 +107,7 @@ SCREEN_W, SCREEN_H = 160, 120
 
 
 
-class Guy(GraphicsComponent, Rect):
+class Guy(InputComponent, GraphicsComponent, Rect):
 
     def render(self, offset_x, offset_y):
         pyxel.rectb(offset_x + self.x,
@@ -110,6 +116,11 @@ class Guy(GraphicsComponent, Rect):
                     offset_y + self.y + self.h - 1,
                     2)
 
+    def process_input(self):
+        if pyxel.btn(pyxel.KEY_LEFT):
+            self.x -= 1
+        if pyxel.btn(pyxel.KEY_RIGHT):
+            self.x += 1
 
 
 guy_x, guy_y = MAP.spawn_point
@@ -199,10 +210,9 @@ def update():
 
     orig_x, orig_y = GUY.x, GUY.y
 
-    if pyxel.btn(pyxel.KEY_LEFT):
-        GUY.x -= 1
-    if pyxel.btn(pyxel.KEY_RIGHT):
-        GUY.x += 1
+    for entity in filter_entities(ENTITIES, InputComponent):
+        entity.process_input()
+
     if have_guy_collision():
         GUY.x = orig_x
 
