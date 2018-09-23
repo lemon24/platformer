@@ -149,7 +149,11 @@ def jump_state_machine():
         if pyxel.btnp(pyxel.KEY_CONTROL):
             JUMP_STATE = 'jumping'
             return jump_state_machine()
-        return have_guy_collision()
+        if have_guy_collision():
+            return True
+        else:
+            JUMP_STATE = 'falling'
+            return False
 
     elif JUMP_STATE == 'jumping':
         if pyxel.btn(pyxel.KEY_CONTROL):
