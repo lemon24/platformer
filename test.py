@@ -1,7 +1,15 @@
 import itertools
+import abc
 
 import attr
 import pyxel
+
+
+class GraphicsComponent(abc.ABC):
+
+    @abc.abstractmethod
+    def render(self, offset_x, offset_y):
+        raise NotImplementedError
 
 
 @attr.s
@@ -18,6 +26,16 @@ class Rect:
     @property
     def b(self):
         return self.y + self.h
+
+
+class Tile(GraphicsComponent, Rect):
+
+    def render(self, offset_x, offset_y):
+        pyxel.rect(offset_x + self.x,
+                   offset_y + self.y,
+                   offset_x + self.r - 1,
+                   offset_y + self.b - 1,
+                   1)
 
 
 @attr.s
@@ -46,7 +64,7 @@ def parse_map(string, tile_size):
                 assert spawn_point is None, "already have one spawn point"
                 spawn_point = i * tile_size, j * tile_size
             elif char == 't':
-                tiles.append(Rect(i * tile_size, j * tile_size, tile_size, tile_size))
+                tiles.append(Tile(i * tile_size, j * tile_size, tile_size, tile_size))
             else:
                 assert False, "unknown tile char: %r" % char
 
@@ -83,9 +101,20 @@ SCREEN_W, SCREEN_H = 160, 120
 
 
 
+class Guy(GraphicsComponent, Rect):
+
+    def render(self, offset_x, offset_y):
+        pyxel.rectb(offset_x + self.x,
+                    offset_y + self.y,
+                    offset_x + self.x + self.w - 1,
+                    offset_y + self.y + self.h - 1,
+                    2)
+
+
+
 guy_x, guy_y = MAP.spawn_point
 
-GUY = Rect(guy_x, guy_y, 3, 7)
+GUY = Guy(guy_x, guy_y, 3, 7)
 
 del guy_x, guy_y
 
@@ -177,20 +206,8 @@ def update():
         GUY.y = orig_y
 
 
-def draw_map(offset_x, offset_y):
-    for tile in MAP.tiles:
-        pyxel.rect(offset_x + tile.x,
-                   offset_y + tile.y,
-                   offset_x + tile.r - 1,
-                   offset_y + tile.b - 1,
-                   1)
 
-def draw_guy(offset_x, offset_y):
-    pyxel.rectb(offset_x + GUY.x,
-                offset_y + GUY.y,
-                offset_x + GUY.x + GUY.w - 1,
-                offset_y + GUY.y + GUY.h - 1,
-                2)
+
 
 
 def center_on_guy():
@@ -213,12 +230,17 @@ cycle_camera()
 
 def draw():
     pyxel.cls(0)
-
     offset_x, offset_y = CENTER_FUNC()
+    for entity in filter_entities(ENTITIES, GraphicsComponent):
+        entity.render(offset_x, offset_y)
 
-    draw_map(offset_x, offset_y)
-    draw_guy(offset_x, offset_y)
 
+ENTITIES = [GUY] + MAP.tiles
+
+def filter_entities(entities, *classinfos):
+    for entity in entities:
+        if all(isinstance(entity, ci) for ci in classinfos):
+            yield entity
 
 
 pyxel.init(SCREEN_W, SCREEN_H)
