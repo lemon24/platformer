@@ -1,14 +1,62 @@
 import itertools
 
+import attr
 import pyxel
 
 
-def parse_map(string):
-    map = []
-    for line in string.strip().splitlines():
-        map.append(line.split())
-    assert len(set(len(row) for row in map)) == 1
-    return map
+@attr.s
+class Rect:
+    x = attr.ib(default=0)
+    y = attr.ib(default=0)
+    w = attr.ib(default=0)
+    h = attr.ib(default=0)
+
+    @property
+    def r(self):
+        return self.x + self.w
+
+    @property
+    def b(self):
+        return self.y + self.h
+
+
+@attr.s
+class Map:
+    tiles = attr.ib(factory=list)
+    spawn_point = attr.ib(default=(0, 0))
+    w = attr.ib(default=0)
+    h = attr.ib(default=0)
+
+
+def parse_map(string, tile_size):
+    tiles = []
+    spawn_point = None
+    width = None
+
+    for j, line in enumerate(string.strip().splitlines()):
+        chars = line.split()
+        if j == 0:
+            width = len(chars)
+        else:
+            assert len(chars) == width, "wrong width at row %i" % j
+        for i, char in enumerate(chars):
+            if char == '.':
+                continue
+            elif char == '@':
+                assert spawn_point is None, "already have one spawn point"
+                spawn_point = i * tile_size, j * tile_size
+            elif char == 't':
+                tiles.append(Rect(i * tile_size, j * tile_size, tile_size, tile_size))
+            else:
+                assert False, "unknown tile char: %r" % char
+
+    height = j + 1
+
+    return Map(tiles, spawn_point, width * tile_size, height * tile_size)
+
+
+
+TILE_SIZE = 8
 
 MAP = parse_map("""
 
@@ -28,58 +76,45 @@ t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . t
 
-""")
+""", TILE_SIZE)
 
-def guy_map_pos():
-    for j, row in enumerate(MAP):
-        for i, tile in enumerate(row):
-            if tile == '@':
-                return j * TILE_SIZE, i * TILE_SIZE
-
-TILE_SIZE = 8
-
-MAP_W, MAP_H = len(MAP[0]) * TILE_SIZE, len(MAP) * TILE_SIZE
 
 SCREEN_W, SCREEN_H = 160, 120
 
 
-GUY_W, GUY_H = 3, 7
-GUY_X, GUY_Y = guy_map_pos()
+
+guy_x, guy_y = MAP.spawn_point
+
+GUY = Rect(guy_x, guy_y, 3, 7)
+
+del guy_x, guy_y
+
 
 MAX_JUMP_HEIGHT = TILE_SIZE * 3 + 2
 JUMP_HEIGHT = 0
 MAX_JUMP_FRAME = 10
 JUMP_FRAME = 0
-JUMP_STATE = 'none'
+JUMP_STATE = 'falling'
 
 
 def have_guy_collision():
-    guy_r, guy_b = GUY_X + GUY_W, GUY_Y + GUY_H
-
-    for j, row in enumerate(MAP):
-        for i, tile in enumerate(row):
-            if tile != 't':
-                continue
-            tile_x, tile_y = i * TILE_SIZE, j * TILE_SIZE
-            tile_r, tile_b = tile_x + TILE_SIZE, tile_y + TILE_SIZE
-
-            h_collision = GUY_X < tile_r and guy_r > tile_x
-            v_collision = GUY_Y < tile_b and guy_b > tile_y
-            if h_collision and v_collision:
-                return True
-
+    for tile in MAP.tiles:
+        h_collision = GUY.x < tile.r and GUY.r > tile.x
+        v_collision = GUY.y < tile.b and GUY.b > tile.y
+        if h_collision and v_collision:
+            return True
     return False
 
 
 def jump_state_machine():
-    global JUMP_HEIGHT, JUMP_FRAME, JUMP_STATE, GUY_Y
+    global JUMP_HEIGHT, JUMP_FRAME, JUMP_STATE
 
     if JUMP_STATE != 'none':
-        print(JUMP_STATE, JUMP_HEIGHT, JUMP_FRAME, GUY_Y)
+        print(JUMP_STATE, JUMP_HEIGHT, JUMP_FRAME, GUY.y)
 
     if JUMP_STATE != 'jumping':
         # gravity
-        GUY_Y += 1
+        GUY.y += 1
 
     if JUMP_STATE == 'none':
         if pyxel.btnp(pyxel.KEY_CONTROL):
@@ -90,7 +125,7 @@ def jump_state_machine():
     elif JUMP_STATE == 'jumping':
         if pyxel.btn(pyxel.KEY_CONTROL):
             new_jump_height = min(JUMP_HEIGHT + 3, MAX_JUMP_HEIGHT)
-            GUY_Y -= new_jump_height - JUMP_HEIGHT
+            GUY.y -= new_jump_height - JUMP_HEIGHT
             JUMP_HEIGHT = new_jump_height
 
             if have_guy_collision():
@@ -124,52 +159,45 @@ def jump_state_machine():
 
 
 def update():
-    global GUY_X, GUY_Y
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
     if pyxel.btnp(pyxel.KEY_C):
         cycle_camera()
 
-    orig_x, orig_y = GUY_X, GUY_Y
+    orig_x, orig_y = GUY.x, GUY.y
 
     if pyxel.btn(pyxel.KEY_LEFT):
-        GUY_X -= 1
+        GUY.x -= 1
     if pyxel.btn(pyxel.KEY_RIGHT):
-        GUY_X += 1
+        GUY.x += 1
     if have_guy_collision():
-        GUY_X = orig_x
+        GUY.x = orig_x
 
     if jump_state_machine():
-        GUY_Y = orig_y
+        GUY.y = orig_y
 
 
 def draw_map(offset_x, offset_y):
-    for j, row in enumerate(MAP):
-        for i, tile in enumerate(row):
-            if tile in '.@':
-                pass
-            elif tile == 't':
-                pyxel.rect(offset_x + i * TILE_SIZE,
-                           offset_y + j * TILE_SIZE,
-                           offset_x + (i+1) * TILE_SIZE - 1,
-                           offset_y + (j+1) * TILE_SIZE - 1,
-                           1)
-            else:
-                assert False, "unknown tile: %r" % tile
+    for tile in MAP.tiles:
+        pyxel.rect(offset_x + tile.x,
+                   offset_y + tile.y,
+                   offset_x + tile.r - 1,
+                   offset_y + tile.b - 1,
+                   1)
 
 def draw_guy(offset_x, offset_y):
-    pyxel.rectb(offset_x + GUY_X,
-                offset_y + GUY_Y,
-                offset_x + GUY_X + GUY_W - 1,
-                offset_y + GUY_Y + GUY_H - 1,
+    pyxel.rectb(offset_x + GUY.x,
+                offset_y + GUY.y,
+                offset_x + GUY.x + GUY.w - 1,
+                offset_y + GUY.y + GUY.h - 1,
                 2)
 
 
 def center_on_guy():
-    return -GUY_X + SCREEN_W // 2, -GUY_Y + SCREEN_H // 2
+    return -GUY.x + SCREEN_W // 2, -GUY.y + SCREEN_H // 2
 
 def center_on_map():
-    return - MAP_W // 2 + SCREEN_W // 2, - MAP_H // 2 + SCREEN_H // 2
+    return - MAP.w // 2 + SCREEN_W // 2, - MAP.h // 2 + SCREEN_H // 2
 
 
 
@@ -190,9 +218,6 @@ def draw():
 
     draw_map(offset_x, offset_y)
     draw_guy(offset_x, offset_y)
-
-
-
 
 
 
