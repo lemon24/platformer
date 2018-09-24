@@ -17,6 +17,12 @@ class InputComponent(abc.ABC):
     def process_input(self):
         raise NotImplementedError
 
+class PhysicsComponent(abc.ABC):
+
+    @abc.abstractmethod
+    def simulate(self):
+        raise NotImplementedError
+
 
 @attr.s
 class Rect:
@@ -106,8 +112,28 @@ t . . . . . . . . . . . . . . . . . . .
 SCREEN_W, SCREEN_H = 160, 120
 
 
+@attr.s(init=False)
+class GuyInputComponent(InputComponent):
 
-class Guy(InputComponent, GraphicsComponent, Rect):
+    left_pressed = attr.ib(default=False)
+    right_pressed = attr.ib(default=False)
+
+    def process_input(self):
+        self.left_pressed = pyxel.btn(pyxel.KEY_LEFT)
+        self.right_pressed = pyxel.btn(pyxel.KEY_RIGHT)
+
+
+@attr.s(init=False)
+class GuyPhysicsComponent(PhysicsComponent):
+
+    def simulate(self):
+        if self.left_pressed:
+            self.x -= 1
+        if self.right_pressed:
+            self.x += 1
+
+
+class Guy(GuyPhysicsComponent, GuyInputComponent, GraphicsComponent, Rect):
 
     def render(self, offset_x, offset_y):
         pyxel.rectb(offset_x + self.x,
@@ -115,12 +141,6 @@ class Guy(InputComponent, GraphicsComponent, Rect):
                     offset_x + self.x + self.w - 1,
                     offset_y + self.y + self.h - 1,
                     2)
-
-    def process_input(self):
-        if pyxel.btn(pyxel.KEY_LEFT):
-            self.x -= 1
-        if pyxel.btn(pyxel.KEY_RIGHT):
-            self.x += 1
 
 
 guy_x, guy_y = MAP.spawn_point
@@ -212,16 +232,14 @@ def update():
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
+    for entity in filter_entities(ENTITIES, PhysicsComponent):
+        entity.simulate()
 
     if have_guy_collision():
         GUY.x = orig_x
 
     if jump_state_machine():
         GUY.y = orig_y
-
-
-
-
 
 
 def center_on_guy():
