@@ -112,27 +112,107 @@ t . . . . . . . . . . . . . . . . . . .
 SCREEN_W, SCREEN_H = 160, 120
 
 
-@attr.s(init=False)
+@attr.s
 class GuyInputComponent(InputComponent):
 
     left_pressed = attr.ib(default=False)
     right_pressed = attr.ib(default=False)
+    jump_pressed = attr.ib(default=False)
+    jump_pressed_now = attr.ib(default=False)
 
     def process_input(self):
         self.left_pressed = pyxel.btn(pyxel.KEY_LEFT)
         self.right_pressed = pyxel.btn(pyxel.KEY_RIGHT)
+        self.jump_pressed = pyxel.btn(pyxel.KEY_CONTROL)
+        self.jump_pressed_now = pyxel.btnp(pyxel.KEY_CONTROL)
 
 
-@attr.s(init=False)
+
+MAX_JUMP_HEIGHT = TILE_SIZE * 3 + 2
+MAX_JUMP_FRAME = 10
+
+
+@attr.s
 class GuyPhysicsComponent(PhysicsComponent):
 
+    jump_height = attr.ib(default=0)
+    jump_frame = attr.ib(default=0)
+    jump_state = attr.ib(default='falling')
+
     def simulate(self):
+        orig_x, orig_y = self.x, self.y
+
         if self.left_pressed:
             self.x -= 1
         if self.right_pressed:
             self.x += 1
 
+        if self._have_map_collision():
+            self.x = orig_x
 
+        if self._jump_state_machine():
+            self.y = orig_y
+
+    def _have_map_collision(self):
+        for tile in MAP.tiles:
+            h_collision = self.x < tile.r and self.r > tile.x
+            v_collision = self.y < tile.b and self.b > tile.y
+            if h_collision and v_collision:
+                return True
+        return False
+
+    def _jump_state_machine(self):
+        if self.jump_state != 'jumping':
+            # gravity
+            self.y += 1
+
+        if self.jump_state == 'none':
+            if self.jump_pressed_now:
+                self.jump_state = 'jumping'
+                return self._jump_state_machine()
+            if self._have_map_collision():
+                return True
+            else:
+                self.jump_state = 'falling'
+                return False
+
+        elif self.jump_state == 'jumping':
+            if self.jump_pressed:
+                new_jump_height = min(self.jump_height + 3, MAX_JUMP_HEIGHT)
+                self.y -= new_jump_height - self.jump_height
+                self.jump_height = new_jump_height
+
+                if self._have_map_collision():
+                    print('collision during jump')
+                    self.jump_state = 'falling'
+                    return True
+
+                self.jump_frame += 1
+                if self.jump_frame > MAX_JUMP_FRAME:
+                    print('max frame reached')
+                    self.jump_state = 'falling'
+                    return False
+
+                return False
+            else:
+                print('ctrl not pressed anymore')
+                self.jump_state = 'falling'
+                return False
+
+        elif self.jump_state == 'falling':
+            if self._have_map_collision():
+                print('collision during fall')
+                self.jump_state = 'none'
+                self.jump_frame = 0
+                self.jump_height = 0
+                return True
+            return False
+
+        else:
+            assert False
+
+
+@attr.s
 class Guy(GuyPhysicsComponent, GuyInputComponent, GraphicsComponent, Rect):
 
     def render(self, offset_x, offset_y):
@@ -142,84 +222,7 @@ class Guy(GuyPhysicsComponent, GuyInputComponent, GraphicsComponent, Rect):
                     offset_y + self.y + self.h - 1,
                     2)
 
-
-guy_x, guy_y = MAP.spawn_point
-
-GUY = Guy(guy_x, guy_y, 3, 7)
-
-del guy_x, guy_y
-
-
-MAX_JUMP_HEIGHT = TILE_SIZE * 3 + 2
-JUMP_HEIGHT = 0
-MAX_JUMP_FRAME = 10
-JUMP_FRAME = 0
-JUMP_STATE = 'falling'
-
-
-def have_guy_collision():
-    for tile in MAP.tiles:
-        h_collision = GUY.x < tile.r and GUY.r > tile.x
-        v_collision = GUY.y < tile.b and GUY.b > tile.y
-        if h_collision and v_collision:
-            return True
-    return False
-
-
-def jump_state_machine():
-    global JUMP_HEIGHT, JUMP_FRAME, JUMP_STATE
-
-    if JUMP_STATE != 'none':
-        print(JUMP_STATE, JUMP_HEIGHT, JUMP_FRAME, GUY.y)
-
-    if JUMP_STATE != 'jumping':
-        # gravity
-        GUY.y += 1
-
-    if JUMP_STATE == 'none':
-        if pyxel.btnp(pyxel.KEY_CONTROL):
-            JUMP_STATE = 'jumping'
-            return jump_state_machine()
-        if have_guy_collision():
-            return True
-        else:
-            JUMP_STATE = 'falling'
-            return False
-
-    elif JUMP_STATE == 'jumping':
-        if pyxel.btn(pyxel.KEY_CONTROL):
-            new_jump_height = min(JUMP_HEIGHT + 3, MAX_JUMP_HEIGHT)
-            GUY.y -= new_jump_height - JUMP_HEIGHT
-            JUMP_HEIGHT = new_jump_height
-
-            if have_guy_collision():
-                print('collision during jump')
-                JUMP_STATE = 'falling'
-                return True
-
-            JUMP_FRAME += 1
-            if JUMP_FRAME > MAX_JUMP_FRAME:
-                print('max frame reached')
-                JUMP_STATE = 'falling'
-                return False
-
-            return False
-        else:
-            print('ctrl not pressed anymore')
-            JUMP_STATE = 'falling'
-            return False
-
-    elif JUMP_STATE == 'falling':
-        if have_guy_collision():
-            print('collision during fall')
-            JUMP_STATE = 'none'
-            JUMP_FRAME = 0
-            JUMP_HEIGHT = 0
-            return True
-        return False
-
-    else:
-        assert False
+GUY = Guy(x=MAP.spawn_point[0], y=MAP.spawn_point[1], w=3, h=7)
 
 
 def update():
@@ -228,18 +231,12 @@ def update():
     if pyxel.btnp(pyxel.KEY_C):
         cycle_camera()
 
-    orig_x, orig_y = GUY.x, GUY.y
-
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
     for entity in filter_entities(ENTITIES, PhysicsComponent):
         entity.simulate()
 
-    if have_guy_collision():
-        GUY.x = orig_x
 
-    if jump_state_machine():
-        GUY.y = orig_y
 
 
 def center_on_guy():
