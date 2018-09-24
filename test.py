@@ -219,15 +219,20 @@ class GuyPhysicsComponent(PhysicsComponent):
 
 
 @attr.s
-class Guy(GuyPhysicsComponent, GuyInputComponent, GraphicsComponent, Rect):
+class GuyGraphicsComponent(GraphicsComponent):
+
+    color = attr.ib(default=2)
 
     def render(self, offset_x, offset_y):
         pyxel.rectb(offset_x + self.x,
                     offset_y + self.y,
                     offset_x + self.x + self.w - 1,
                     offset_y + self.y + self.h - 1,
-                    2)
+                    self.color)
 
+
+@attr.s
+class Guy(GuyPhysicsComponent, GuyInputComponent, GuyGraphicsComponent, Rect): pass
 
 
 def update():
@@ -240,8 +245,6 @@ def update():
         entity.process_input()
     for entity in filter_entities(ENTITIES, PhysicsComponent):
         entity.simulate()
-
-
 
 
 def center_on_guy():
