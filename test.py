@@ -53,14 +53,14 @@ class Tile(GraphicsComponent, Rect):
 @attr.s
 class Map:
     tiles = attr.ib(factory=list)
-    spawn_point = attr.ib(default=(0, 0))
+    spawn_points = attr.ib(factory=list)
     w = attr.ib(default=0)
     h = attr.ib(default=0)
 
 
 def parse_map(string, tile_size):
     tiles = []
-    spawn_point = None
+    spawn_points = []
     width = None
 
     for j, line in enumerate(string.strip().splitlines()):
@@ -73,8 +73,7 @@ def parse_map(string, tile_size):
             if char == '.':
                 continue
             elif char == '@':
-                assert spawn_point is None, "already have one spawn point"
-                spawn_point = i * tile_size, j * tile_size
+                spawn_points.append((i * tile_size, j * tile_size))
             elif char == 't':
                 tiles.append(Tile(i * tile_size, j * tile_size, tile_size, tile_size))
             else:
@@ -82,7 +81,7 @@ def parse_map(string, tile_size):
 
     height = j + 1
 
-    return Map(tiles, spawn_point, width * tile_size, height * tile_size)
+    return Map(tiles, spawn_points, width * tile_size, height * tile_size)
 
 
 
@@ -99,7 +98,7 @@ t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . t t t . . . . . . t t t t t t . . .
 . . . . . . . . @ . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . @ . . . .
 . t t t t t t t t t t t t t t t t t t .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
@@ -280,9 +279,12 @@ def filter_entities(entities, *classinfos):
 
 pyxel.init(SCREEN_W, SCREEN_H)
 
-GUY = Guy(x=MAP.spawn_point[0], y=MAP.spawn_point[1], w=3, h=7)
+GUY = Guy(x=MAP.spawn_points[0][0], y=MAP.spawn_points[0][1], w=3, h=7)
+TWO = Guy(x=MAP.spawn_points[1][0], y=MAP.spawn_points[1][1], w=3, h=7,
+          color=3,
+          keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
 
-ENTITIES = [GUY] + MAP.tiles
+ENTITIES = [GUY, TWO] + MAP.tiles
 
 pyxel.run(update, draw)
 
