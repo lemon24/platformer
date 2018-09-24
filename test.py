@@ -120,11 +120,17 @@ class GuyInputComponent(InputComponent):
     jump_pressed = attr.ib(default=False)
     jump_pressed_now = attr.ib(default=False)
 
+    keymap = attr.ib(factory=lambda: dict(
+        left=pyxel.KEY_LEFT,
+        right=pyxel.KEY_RIGHT,
+        jump=pyxel.KEY_CONTROL,
+    ))
+
     def process_input(self):
-        self.left_pressed = pyxel.btn(pyxel.KEY_LEFT)
-        self.right_pressed = pyxel.btn(pyxel.KEY_RIGHT)
-        self.jump_pressed = pyxel.btn(pyxel.KEY_CONTROL)
-        self.jump_pressed_now = pyxel.btnp(pyxel.KEY_CONTROL)
+        self.left_pressed = pyxel.btn(self.keymap['left'])
+        self.right_pressed = pyxel.btn(self.keymap['right'])
+        self.jump_pressed = pyxel.btn(self.keymap['jump'])
+        self.jump_pressed_now = pyxel.btnp(self.keymap['jump'])
 
 
 
@@ -222,7 +228,6 @@ class Guy(GuyPhysicsComponent, GuyInputComponent, GraphicsComponent, Rect):
                     offset_y + self.y + self.h - 1,
                     2)
 
-GUY = Guy(x=MAP.spawn_point[0], y=MAP.spawn_point[1], w=3, h=7)
 
 
 def update():
@@ -264,8 +269,6 @@ def draw():
         entity.render(offset_x, offset_y)
 
 
-ENTITIES = [GUY] + MAP.tiles
-
 def filter_entities(entities, *classinfos):
     for entity in entities:
         if all(isinstance(entity, ci) for ci in classinfos):
@@ -273,5 +276,10 @@ def filter_entities(entities, *classinfos):
 
 
 pyxel.init(SCREEN_W, SCREEN_H)
+
+GUY = Guy(x=MAP.spawn_point[0], y=MAP.spawn_point[1], w=3, h=7)
+
+ENTITIES = [GUY] + MAP.tiles
+
 pyxel.run(update, draw)
 
