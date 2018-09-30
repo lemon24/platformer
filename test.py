@@ -94,10 +94,10 @@ t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . .
+. . . . @ . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . t t t . . . . . . t t t t t t . . .
-. . . . . . . . @ . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . @ . . . .
 . t t t t t t t t t t t t t t t t t t .
 . . . . . . . . . . . . . . . . . . . .
@@ -133,29 +133,81 @@ class GuyInputComponent(InputComponent):
 
 
 
-MAX_JUMP_HEIGHT = TILE_SIZE * 3 + 2
-MAX_JUMP_FRAME = 10
+HORIZONTAL_VELOCITY = 1
+MAX_JUMP_FRAME = 4
+JUMP_VELOCITY = -5
+GRAVITY = 1
 
 
 @attr.s
 class GuyPhysicsComponent(PhysicsComponent):
 
-    jump_height = attr.ib(default=0)
+    """Implements moving based on input, as well as gravity.
+
+    Features:
+
+    * map collision detection
+    * horizontal movement (constant velocity)
+    * vertical movement (2nd degree polynomial)
+        * gravity
+        * jumping
+    * jump higher if jump key is pressed longer
+
+    Issues:
+
+    1.  Transition from falling to standing flips back and forth a few times
+        until the object stabilizes from being pushed out of the ground due to
+        collisions; visible on the animation. Possible solutions:
+
+        * push the object immediately next to the ground instead of back
+          to its original location
+        * run the physics simulation with a very small timestep (fraction of
+          a frame) for a few times to allow the object to stabilize;
+          probably means decoupling it from the fixed(?) timestep update()
+          is called with
+
+    2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
+        persistent (the object never stabilizes). Solution: Do physics with
+        floats, convert to int only when drawing.
+
+
+    """
+
+
+    y_velocity = attr.ib(default=0)
     jump_frame = attr.ib(default=0)
-    jump_state = attr.ib(default='falling')
+    _jump_state = attr.ib(default='falling')
+
+    had_collision = attr.ib(default=False)
+
+    @property
+    def jump_state(self):
+        return self._jump_state
+
+    @jump_state.setter
+    def jump_state(self, value):
+        print("{:10} -> {:10}  {:>3} {:>3} {:>3}".format(
+            self._jump_state, value, self.y, self.y_velocity, self.jump_frame))
+        self._jump_state = value
 
     def simulate(self):
         orig_x, orig_y = self.x, self.y
 
         if self.left_pressed:
-            self.x -= 1
+            self.x -= HORIZONTAL_VELOCITY
         if self.right_pressed:
-            self.x += 1
+            self.x += HORIZONTAL_VELOCITY
 
         if self._have_map_collision():
             self.x = orig_x
 
-        if self._jump_state_machine():
+        self._jump_state_machine()
+
+        self.y_velocity += GRAVITY
+        self.y = int(self.y + self.y_velocity)
+
+        self.had_collision = self._have_map_collision()
+        if self.had_collision:
             self.y = orig_y
 
     def _have_map_collision(self):
@@ -167,54 +219,39 @@ class GuyPhysicsComponent(PhysicsComponent):
         return False
 
     def _jump_state_machine(self):
-        if self.jump_state != 'jumping':
-            # gravity
-            self.y += 1
 
-        if self.jump_state == 'none':
+        if self.jump_state == 'standing':
+            self.y_velocity = 0
+            if not self.had_collision:
+                self.jump_state = 'falling'
+                return
+
             if self.jump_pressed_now:
                 self.jump_state = 'jumping'
+                self.had_collision = False
                 return self._jump_state_machine()
-            if self._have_map_collision():
-                return True
-            else:
-                self.jump_state = 'falling'
-                return False
 
         elif self.jump_state == 'jumping':
+
+            if self.had_collision:
+                self.jump_frame = 0
+                self.jump_state = 'falling'
+                return
+
             if self.jump_pressed:
-                new_jump_height = min(self.jump_height + 3, MAX_JUMP_HEIGHT)
-                self.y -= new_jump_height - self.jump_height
-                self.jump_height = new_jump_height
-
-                if self._have_map_collision():
-                    print('collision during jump')
-                    self.jump_state = 'falling'
-                    return True
-
+                self.y_velocity = JUMP_VELOCITY
                 self.jump_frame += 1
                 if self.jump_frame > MAX_JUMP_FRAME:
-                    print('max frame reached')
+                    self.jump_frame = 0
                     self.jump_state = 'falling'
-                    return False
-
-                return False
-            else:
-                print('ctrl not pressed anymore')
-                self.jump_state = 'falling'
-                return False
 
         elif self.jump_state == 'falling':
-            if self._have_map_collision():
-                print('collision during fall')
-                self.jump_state = 'none'
-                self.jump_frame = 0
-                self.jump_height = 0
-                return True
-            return False
+            if self.had_collision:
+                self.jump_state = 'standing'
+                return
 
         else:
-            assert False
+            assert False, "invalid state: %s" % self.jump_state
 
 
 @attr.s
@@ -254,7 +291,7 @@ def center_on_map():
 
 
 
-CENTER_FUNC_ITER = itertools.cycle([center_on_guy, center_on_map])
+CENTER_FUNC_ITER = itertools.cycle([center_on_map, center_on_guy])
 
 def cycle_camera():
     global CENTER_FUNC
@@ -284,7 +321,7 @@ TWO = Guy(x=MAP.spawn_points[1][0], y=MAP.spawn_points[1][1], w=3, h=7,
           color=3,
           keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
 
-ENTITIES = [GUY, TWO] + MAP.tiles
+ENTITIES = [GUY, ] + MAP.tiles
 
 pyxel.run(update, draw)
 
