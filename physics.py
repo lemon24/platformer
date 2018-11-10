@@ -80,8 +80,12 @@ class World:
             one.y = int(one.y + one.velocity.y)
 
             if self.check_dynamic_static_collision(one):
-                one.position = one.old_position
-                one.velocity = Vec2()
+                one.x = one.old_position.x
+                one.velocity.x = 0
+
+                if self.check_dynamic_static_collision(one):
+                    one.y = one.old_position.y
+                    one.velocity.y = 0
 
 
 
@@ -92,6 +96,9 @@ world = World([
 
     Dynamic(70, 20, 4, 4),
     Static(60, 80, 40, 4),
+
+    Dynamic(90, 50, 4, 4, velocity=Vec2(2, 0)),
+    Static(100, 40, 4, 40),
 
 ], 1)
 
