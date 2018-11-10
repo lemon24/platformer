@@ -1,5 +1,35 @@
+"""
+
+Implements gravity and collision detection.
+
+Features:
+
+* map collision detection
+* vertical movement (2nd degree polynomial)
+    * gravity
+    * vertical velocity
+
+Issues:
+
+1.  Transition from falling to standing flips back and forth a few times
+    until the object stabilizes from being pushed out of the ground due to
+    collisions; visible on the animation. Possible solutions:
+
+    * push the object immediately next to the ground instead of back
+        to its original location
+    * run the physics simulation with a very small timestep (fraction of
+        a frame) for a few times to allow the object to stabilize;
+        probably means decoupling it from the fixed(?) timestep update()
+        is called with
+
+2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
+    persistent (the object never stabilizes). Solution: Do physics with
+    floats, convert to int only when drawing.
+
+
+"""
+
 import attr
-import pyxel
 
 
 @attr.s
@@ -37,11 +67,13 @@ class Static(Rect): pass
 class Dynamic(Rect):
     velocity = attr.ib(default=attr.Factory(Vec2))
     old_position = attr.ib(default=attr.Factory(Vec2))
+    had_collision = attr.ib(default=False)
+
 
 
 @attr.s
 class World:
-    things = attr.ib(default=attr.Factory(list))
+    things = attr.ib(default=attr.Factory(list), converter=list)
     gravity = attr.ib(default=0)
 
     @property
@@ -79,7 +111,11 @@ class World:
             one.x = one.x + one.velocity.x
             one.y = one.y + one.velocity.y
 
+            one.had_collision = False
+
             if self.check_dynamic_static_collision(one):
+                one.had_collision = True
+
                 one.x = one.old_position.x
                 one.velocity.x = 0
 
@@ -90,7 +126,7 @@ class World:
 
 
 
-world = World([
+WORLD = World([
     Dynamic(20, 20, 4, 4),
     Static(10, 40, 40, 4),
 
@@ -105,17 +141,21 @@ world = World([
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
-    world.simulate()
+    WORLD.simulate()
 
 def draw():
     pyxel.cls(0)
-    for thing in world.things:
+    for thing in WORLD.things:
         pyxel.rectb(int(thing.x),
                     int(thing.y),
                     int(thing.x + thing.w - 1),
                     int(thing.y + thing.h - 1),
-                    1)
+                    2 if hasattr(thing, 'velocity') else 1)
 
-pyxel.init(160, 120, fps=4)
 
-pyxel.run(update, draw)
+
+if __name__ == '__main__':
+    import pyxel
+    pyxel.init(160, 120, fps=4)
+    pyxel.run(update, draw)
+

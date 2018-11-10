@@ -4,6 +4,8 @@ import abc
 import attr
 import pyxel
 
+from physics import Static, Dynamic, World
+
 
 class GraphicsComponent(abc.ABC):
 
@@ -19,28 +21,11 @@ class InputComponent(abc.ABC):
 
 class PhysicsComponent(abc.ABC):
 
-    @abc.abstractmethod
-    def simulate(self):
-        raise NotImplementedError
+    pass
 
 
-@attr.s
-class Rect:
-    x = attr.ib(default=0)
-    y = attr.ib(default=0)
-    w = attr.ib(default=0)
-    h = attr.ib(default=0)
 
-    @property
-    def r(self):
-        return self.x + self.w
-
-    @property
-    def b(self):
-        return self.y + self.h
-
-
-class Tile(GraphicsComponent, Rect):
+class Tile(GraphicsComponent, PhysicsComponent, Static):
 
     def render(self, offset_x, offset_y):
         pyxel.rect(offset_x + self.x,
@@ -207,60 +192,15 @@ GRAVITY = 1
 @attr.s
 class GuyPhysicsComponent(PhysicsComponent):
 
-    """Implements gravity and collision detection.
+    """Temporary, until we fully integrate World."""
 
-    Features:
+    @property
+    def y_velocity(self):
+        return self.velocity.y
 
-    * map collision detection
-    * vertical movement (2nd degree polynomial)
-        * gravity
-        * vertical velocity
-
-    Issues:
-
-    1.  Transition from falling to standing flips back and forth a few times
-        until the object stabilizes from being pushed out of the ground due to
-        collisions; visible on the animation. Possible solutions:
-
-        * push the object immediately next to the ground instead of back
-          to its original location
-        * run the physics simulation with a very small timestep (fraction of
-          a frame) for a few times to allow the object to stabilize;
-          probably means decoupling it from the fixed(?) timestep update()
-          is called with
-
-    2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
-        persistent (the object never stabilizes). Solution: Do physics with
-        floats, convert to int only when drawing.
-
-
-    """
-
-    y_velocity = attr.ib(default=0)
-
-    had_collision = attr.ib(default=False)
-
-    def simulate(self):
-
-        orig_x, orig_y = self.x, self.y
-
-        if self._have_map_collision():
-            self.x = orig_x
-
-        self.y_velocity += GRAVITY
-        self.y = self.y + self.y_velocity
-
-        self.had_collision = self._have_map_collision()
-        if self.had_collision:
-            self.y = orig_y
-
-    def _have_map_collision(self):
-        for tile in MAP.tiles:
-            h_collision = self.x < tile.r and self.r > tile.x
-            v_collision = self.y < tile.b and self.b > tile.y
-            if h_collision and v_collision:
-                return True
-        return False
+    @y_velocity.setter
+    def y_velocity(self, value):
+        self.velocity.y = value
 
 
 @attr.s
@@ -277,7 +217,7 @@ class GuyGraphicsComponent(GraphicsComponent):
 
 
 @attr.s
-class Guy(GuyPhysicsComponent, GuyInputComponent, GuyGraphicsComponent, Rect): pass
+class Guy(GuyPhysicsComponent, GuyInputComponent, GuyGraphicsComponent, Dynamic): pass
 
 
 def update():
@@ -288,8 +228,8 @@ def update():
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
-    for entity in filter_entities(ENTITIES, PhysicsComponent):
-        entity.simulate()
+    WORLD.simulate()
+
 
 
 def center_on_guy():
@@ -331,6 +271,11 @@ TWO = Guy(x=MAP.spawn_points[1][0], y=MAP.spawn_points[1][1], w=3, h=7,
           keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
 
 ENTITIES = [GUY, ] + MAP.tiles
+
+
+WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
+
+
 
 pyxel.run(update, draw)
 
