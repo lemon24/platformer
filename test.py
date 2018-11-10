@@ -114,6 +114,17 @@ SCREEN_W, SCREEN_H = 160, 120
 @attr.s
 class GuyInputComponent(InputComponent):
 
+    """Implements moving based on input.
+
+    Features:
+
+    * horizontal movement (constant velocity)
+    * jumping
+        * jump higher if jump key is pressed longer
+
+    """
+
+
     left_pressed = attr.ib(default=False)
     right_pressed = attr.ib(default=False)
     jump_pressed = attr.ib(default=False)
@@ -125,60 +136,8 @@ class GuyInputComponent(InputComponent):
         jump=pyxel.KEY_CONTROL,
     ))
 
-    def process_input(self):
-        self.left_pressed = pyxel.btn(self.keymap['left'])
-        self.right_pressed = pyxel.btn(self.keymap['right'])
-        self.jump_pressed = pyxel.btn(self.keymap['jump'])
-        self.jump_pressed_now = pyxel.btnp(self.keymap['jump'])
-
-
-
-HORIZONTAL_VELOCITY = 1
-MAX_JUMP_FRAME = 4
-JUMP_VELOCITY = -5
-GRAVITY = 1
-
-
-@attr.s
-class GuyPhysicsComponent(PhysicsComponent):
-
-    """Implements moving based on input, as well as gravity.
-
-    Features:
-
-    * map collision detection
-    * horizontal movement (constant velocity)
-    * vertical movement (2nd degree polynomial)
-        * gravity
-        * jumping
-    * jump higher if jump key is pressed longer
-
-    Issues:
-
-    1.  Transition from falling to standing flips back and forth a few times
-        until the object stabilizes from being pushed out of the ground due to
-        collisions; visible on the animation. Possible solutions:
-
-        * push the object immediately next to the ground instead of back
-          to its original location
-        * run the physics simulation with a very small timestep (fraction of
-          a frame) for a few times to allow the object to stabilize;
-          probably means decoupling it from the fixed(?) timestep update()
-          is called with
-
-    2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
-        persistent (the object never stabilizes). Solution: Do physics with
-        floats, convert to int only when drawing.
-
-
-    """
-
-
-    y_velocity = attr.ib(default=0)
     jump_frame = attr.ib(default=0)
     _jump_state = attr.ib(default='falling')
-
-    had_collision = attr.ib(default=False)
 
     @property
     def jump_state(self):
@@ -189,34 +148,6 @@ class GuyPhysicsComponent(PhysicsComponent):
         print("{:10} -> {:10}  {:>3} {:>3} {:>3}".format(
             self._jump_state, value, self.y, self.y_velocity, self.jump_frame))
         self._jump_state = value
-
-    def simulate(self):
-        orig_x, orig_y = self.x, self.y
-
-        if self.left_pressed:
-            self.x -= HORIZONTAL_VELOCITY
-        if self.right_pressed:
-            self.x += HORIZONTAL_VELOCITY
-
-        if self._have_map_collision():
-            self.x = orig_x
-
-        self._jump_state_machine()
-
-        self.y_velocity += GRAVITY
-        self.y = self.y + self.y_velocity
-
-        self.had_collision = self._have_map_collision()
-        if self.had_collision:
-            self.y = orig_y
-
-    def _have_map_collision(self):
-        for tile in MAP.tiles:
-            h_collision = self.x < tile.r and self.r > tile.x
-            v_collision = self.y < tile.b and self.b > tile.y
-            if h_collision and v_collision:
-                return True
-        return False
 
     def _jump_state_machine(self):
 
@@ -252,6 +183,84 @@ class GuyPhysicsComponent(PhysicsComponent):
 
         else:
             assert False, "invalid state: %s" % self.jump_state
+
+    def process_input(self):
+        self.left_pressed = pyxel.btn(self.keymap['left'])
+        self.right_pressed = pyxel.btn(self.keymap['right'])
+        self.jump_pressed = pyxel.btn(self.keymap['jump'])
+        self.jump_pressed_now = pyxel.btnp(self.keymap['jump'])
+
+        if self.left_pressed:
+            self.x -= HORIZONTAL_VELOCITY
+        if self.right_pressed:
+            self.x += HORIZONTAL_VELOCITY
+
+        self._jump_state_machine()
+
+
+HORIZONTAL_VELOCITY = 1
+MAX_JUMP_FRAME = 4
+JUMP_VELOCITY = -5
+GRAVITY = 1
+
+
+@attr.s
+class GuyPhysicsComponent(PhysicsComponent):
+
+    """Implements gravity and collision detection.
+
+    Features:
+
+    * map collision detection
+    * vertical movement (2nd degree polynomial)
+        * gravity
+        * vertical velocity
+
+    Issues:
+
+    1.  Transition from falling to standing flips back and forth a few times
+        until the object stabilizes from being pushed out of the ground due to
+        collisions; visible on the animation. Possible solutions:
+
+        * push the object immediately next to the ground instead of back
+          to its original location
+        * run the physics simulation with a very small timestep (fraction of
+          a frame) for a few times to allow the object to stabilize;
+          probably means decoupling it from the fixed(?) timestep update()
+          is called with
+
+    2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
+        persistent (the object never stabilizes). Solution: Do physics with
+        floats, convert to int only when drawing.
+
+
+    """
+
+    y_velocity = attr.ib(default=0)
+
+    had_collision = attr.ib(default=False)
+
+    def simulate(self):
+
+        orig_x, orig_y = self.x, self.y
+
+        if self._have_map_collision():
+            self.x = orig_x
+
+        self.y_velocity += GRAVITY
+        self.y = self.y + self.y_velocity
+
+        self.had_collision = self._have_map_collision()
+        if self.had_collision:
+            self.y = orig_y
+
+    def _have_map_collision(self):
+        for tile in MAP.tiles:
+            h_collision = self.x < tile.r and self.r > tile.x
+            v_collision = self.y < tile.b and self.b > tile.y
+            if h_collision and v_collision:
+                return True
+        return False
 
 
 @attr.s
