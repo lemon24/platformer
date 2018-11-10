@@ -204,7 +204,7 @@ class GuyPhysicsComponent(PhysicsComponent):
         self._jump_state_machine()
 
         self.y_velocity += GRAVITY
-        self.y = int(self.y + self.y_velocity)
+        self.y = self.y + self.y_velocity
 
         self.had_collision = self._have_map_collision()
         if self.had_collision:
@@ -260,10 +260,10 @@ class GuyGraphicsComponent(GraphicsComponent):
     color = attr.ib(default=2)
 
     def render(self, offset_x, offset_y):
-        pyxel.rectb(offset_x + self.x,
-                    offset_y + self.y,
-                    offset_x + self.x + self.w - 1,
-                    offset_y + self.y + self.h - 1,
+        pyxel.rectb(int(offset_x + self.x),
+                    int(offset_y + self.y),
+                    int(offset_x + self.x + self.w - 1),
+                    int(offset_y + self.y + self.h - 1),
                     self.color)
 
 

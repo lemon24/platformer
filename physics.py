@@ -76,8 +76,8 @@ class World:
             one.old_position = one.position
 
             one.velocity.y += self.gravity
-            one.x = int(one.x + one.velocity.x)
-            one.y = int(one.y + one.velocity.y)
+            one.x = one.x + one.velocity.x
+            one.y = one.y + one.velocity.y
 
             if self.check_dynamic_static_collision(one):
                 one.x = one.old_position.x
@@ -110,10 +110,10 @@ def update():
 def draw():
     pyxel.cls(0)
     for thing in world.things:
-        pyxel.rectb(thing.x,
-                    thing.y,
-                    thing.x + thing.w - 1,
-                    thing.y + thing.h - 1,
+        pyxel.rectb(int(thing.x),
+                    int(thing.y),
+                    int(thing.x + thing.w - 1),
+                    int(thing.y + thing.h - 1),
                     1)
 
 pyxel.init(160, 120, fps=4)
