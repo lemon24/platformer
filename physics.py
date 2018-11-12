@@ -30,6 +30,9 @@ Issues:
 """
 
 import attr
+import pyxel
+import click
+
 
 
 @attr.s
@@ -127,16 +130,28 @@ class World:
 
 
 WORLD = World([
+    # normal
     Dynamic(20, 20, 4, 4),
-    Static(10, 40, 40, 4),
+    Static(10, 40, 20, 4),
 
-    Dynamic(70, 20, 4, 4),
-    Static(60, 80, 40, 4),
+    # tunnel
+    Dynamic(50, 20, 4, 4),
+    Static(40, 80, 20, 4),
 
-    Dynamic(90, 50, 4, 4, velocity=Vec2(2, 0)),
-    Static(100, 40, 4, 40),
+    # slide
+    Dynamic(80, 10, 4, 4, velocity=Vec2(2, 0)),
+    Static(70, 40, 20, 4),
+    Static(90, 20, 4, 20),
 
 ], 1)
+
+TEXT = [
+    (10, 10, 'normal'),
+    (40, 10, 'tunnel'),
+    (70, 10, 'slide'),
+]
+
+DO_CLS = True
 
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
@@ -144,18 +159,34 @@ def update():
     WORLD.simulate()
 
 def draw():
-    pyxel.cls(0)
+    if DO_CLS:
+        pyxel.cls(0)
+    for x, y, text in TEXT:
+        pyxel.text(x, y, text, 5)
     for thing in WORLD.things:
+        if hasattr(thing, 'velocity'):
+            color = 2   # purple
+        else:
+            color = 1   # blue
+        if getattr(thing, 'had_collision', False):
+            color = 8   # red
         pyxel.rectb(int(thing.x),
                     int(thing.y),
                     int(thing.x + thing.w - 1),
                     int(thing.y + thing.h - 1),
-                    2 if hasattr(thing, 'velocity') else 1)
+                    color)
 
 
+
+@click.command()
+@click.option('-f', '--fps', type=int, default=4, show_default=True)
+@click.option('--cls/--no-cls', default=True, show_default=True)
+def main(fps, cls):
+    global DO_CLS
+    DO_CLS = cls
+    pyxel.init(160, 120, fps=fps)
+    pyxel.run(update, draw)
 
 if __name__ == '__main__':
-    import pyxel
-    pyxel.init(160, 120, fps=4)
-    pyxel.run(update, draw)
+    main()
 
