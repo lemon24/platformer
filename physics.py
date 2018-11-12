@@ -131,17 +131,17 @@ class World:
 
 WORLD = World([
     # normal
-    Dynamic(20, 20, 4, 4),
-    Static(10, 40, 20, 4),
+    Dynamic(14, 20, 4, 4),
+    Static(10, 40, 12, 4),
 
     # tunnel
-    Dynamic(50, 20, 4, 4),
-    Static(40, 80, 20, 4),
+    Dynamic(44, 20, 4, 4),
+    Static(40, 80, 12, 4),
 
     # slide
-    Dynamic(80, 10, 4, 4, velocity=Vec2(2, 0)),
-    Static(70, 40, 20, 4),
-    Static(90, 20, 4, 20),
+    Dynamic(70, 10, 4, 4, velocity=Vec2(2, 0)),
+    Static(70, 40, 12, 4),
+    Static(82, 20, 4, 20),
 
 ], 1)
 
