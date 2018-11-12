@@ -138,17 +138,22 @@ WORLD = World([
     Dynamic(44, 20, 4, 4),
     Static(40, 80, 12, 4),
 
-    # slide
+    # vslide
     Dynamic(70, 10, 4, 4, velocity=Vec2(2, 0)),
-    Static(70, 40, 12, 4),
     Static(82, 20, 4, 20),
+
+    # hslide
+    Dynamic(100, 30, 4, 4, velocity=Vec2(2, 0)),
+    Static(100, 40, 20, 4),
 
 ], 1)
 
 TEXT = [
     (10, 10, 'normal'),
     (40, 10, 'tunnel'),
-    (70, 10, 'slide'),
+    (70, 10, 'vslide'),
+    (100, 10, 'hslide'),
+
 ]
 
 DO_CLS = True
