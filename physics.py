@@ -127,6 +127,7 @@ class World:
                 one.velocity.x = 0
 
 
+vsxvel_dynamic = Dynamic(100, 50, 4, 4)
 
 WORLD = World([
     # normal
@@ -145,6 +146,11 @@ WORLD = World([
     Dynamic(100, 30, 4, 4, velocity=Vec2(2, 0)),
     Static(100, 40, 20, 4),
 
+    # vsxvel
+    vsxvel_dynamic,
+    Static(112, 60, 4, 20),
+
+
 ], 1)
 
 TEXT = [
@@ -152,6 +158,7 @@ TEXT = [
     (40, 10, 'tunnel'),
     (70, 10, 'vslide'),
     (100, 10, 'hslide'),
+    (100, 50, 'vsxvel'),
 
 ]
 
@@ -160,6 +167,10 @@ DO_CLS = True
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
+
+    # right-pulling gravity
+    vsxvel_dynamic.velocity.x = 2
+
     WORLD.simulate()
 
 def draw():
