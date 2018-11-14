@@ -131,13 +131,13 @@ class GuyInputComponent(InputComponent):
     @jump_state.setter
     def jump_state(self, value):
         print("{:10} -> {:10}  {:>3} {:>3} {:>3}".format(
-            self._jump_state, value, self.y, self.y_velocity, self.jump_frame))
+            self._jump_state, value, self.y, self.velocity.y, self.jump_frame))
         self._jump_state = value
 
     def _jump_state_machine(self):
 
         if self.jump_state == 'standing':
-            self.y_velocity = 0
+            self.velocity.y = 0
             if not self.had_collision:
                 self.jump_state = 'falling'
                 return
@@ -155,7 +155,7 @@ class GuyInputComponent(InputComponent):
                 return
 
             if self.jump_pressed:
-                self.y_velocity = JUMP_VELOCITY
+                self.velocity.y = JUMP_VELOCITY
                 self.jump_frame += 1
                 if self.jump_frame > MAX_JUMP_FRAME:
                     self.jump_frame = 0
@@ -175,10 +175,13 @@ class GuyInputComponent(InputComponent):
         self.jump_pressed = pyxel.btn(self.keymap['jump'])
         self.jump_pressed_now = pyxel.btnp(self.keymap['jump'])
 
-        if self.left_pressed:
-            self.x -= HORIZONTAL_VELOCITY
-        if self.right_pressed:
-            self.x += HORIZONTAL_VELOCITY
+        if self.left_pressed + self.right_pressed == 1:
+            if self.left_pressed:
+                self.velocity.x = -HORIZONTAL_VELOCITY
+            if self.right_pressed:
+                self.velocity.x = +HORIZONTAL_VELOCITY
+        else:
+            self.velocity.x = 0
 
         self._jump_state_machine()
 
@@ -187,20 +190,6 @@ HORIZONTAL_VELOCITY = 1
 MAX_JUMP_FRAME = 4
 JUMP_VELOCITY = -5
 GRAVITY = 1
-
-
-@attr.s
-class GuyPhysicsComponent(PhysicsComponent):
-
-    """Temporary, until we fully integrate World."""
-
-    @property
-    def y_velocity(self):
-        return self.velocity.y
-
-    @y_velocity.setter
-    def y_velocity(self, value):
-        self.velocity.y = value
 
 
 @attr.s
@@ -217,7 +206,7 @@ class GuyGraphicsComponent(GraphicsComponent):
 
 
 @attr.s
-class Guy(GuyPhysicsComponent, GuyInputComponent, GuyGraphicsComponent, Dynamic): pass
+class Guy(GuyInputComponent, GuyGraphicsComponent, PhysicsComponent, Dynamic): pass
 
 
 def update():
