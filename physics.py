@@ -110,22 +110,21 @@ class World:
         for one in self.dynamic_things:
             one.old_position = one.position
 
-            one.velocity.y += self.gravity
-            one.x = one.x + one.velocity.x
-            one.y = one.y + one.velocity.y
-
             one.had_collision = False
 
+            one.velocity.y += self.gravity
+
+            one.y = one.y + one.velocity.y
             if self.check_dynamic_static_collision(one):
                 one.had_collision = True
+                one.y = one.old_position.y
+                one.velocity.y = 0
 
+            one.x = one.x + one.velocity.x
+            if self.check_dynamic_static_collision(one):
+                one.had_collision = True
                 one.x = one.old_position.x
                 one.velocity.x = 0
-
-                if self.check_dynamic_static_collision(one):
-                    one.y = one.old_position.y
-                    one.velocity.y = 0
-
 
 
 
