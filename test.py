@@ -186,10 +186,10 @@ class GuyInputComponent(InputComponent):
         self._jump_state_machine()
 
 
-HORIZONTAL_VELOCITY = 1
-MAX_JUMP_FRAME = 4
-JUMP_VELOCITY = -5
-GRAVITY = 1
+HORIZONTAL_VELOCITY = 1.2
+MAX_JUMP_FRAME = 5
+JUMP_VELOCITY = -3.6
+GRAVITY = .5
 
 
 @attr.s
@@ -198,16 +198,18 @@ class GuyGraphicsComponent(GraphicsComponent):
     color = attr.ib(default=2)
 
     def render(self, offset_x, offset_y):
-        pyxel.rectb(int(offset_x + self.x),
-                    int(offset_y + self.y),
-                    int(offset_x + self.x + self.w - 1),
-                    int(offset_y + self.y + self.h - 1),
+        pyxel.rectb(round(offset_x + self.x),
+                    round(offset_y + self.y),
+                    round(offset_x + self.x + self.w - 1),
+                    round(offset_y + self.y + self.h - 1),
                     self.color)
 
 
 @attr.s
 class Guy(GuyInputComponent, GuyGraphicsComponent, PhysicsComponent, Dynamic): pass
 
+
+STEPS_PER_FRAME = 10
 
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
@@ -217,7 +219,9 @@ def update():
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
-    WORLD.simulate()
+
+    for _ in range(STEPS_PER_FRAME):
+        WORLD.simulate(1 / STEPS_PER_FRAME)
 
 
 

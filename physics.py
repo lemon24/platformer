@@ -106,21 +106,21 @@ class World:
                 return True
         return False
 
-    def simulate(self):
+    def simulate(self, steps=1):
         for one in self.dynamic_things:
             one.old_position = one.position
 
             one.had_collision = False
 
-            one.velocity.y += self.gravity
+            one.velocity.y += self.gravity * steps
 
-            one.y = one.y + one.velocity.y
+            one.y += one.velocity.y * steps
             if self.check_dynamic_static_collision(one):
                 one.had_collision = True
                 one.y = one.old_position.y
                 one.velocity.y = 0
 
-            one.x = one.x + one.velocity.x
+            one.x += one.velocity.x * steps
             if self.check_dynamic_static_collision(one):
                 one.had_collision = True
                 one.x = one.old_position.x
@@ -128,7 +128,7 @@ class World:
 
 
 
-def right_pulling_gravity(self):
+def right_pulling_gravity(self, steps):
     self.world.things[0].velocity.x = 2
 
 
@@ -139,24 +139,24 @@ class Scene:
     world = attr.ib()
     updates = attr.ib(default=attr.Factory(list))
 
-    def update(self):
+    def update(self, steps=1):
         for update in self.updates:
-            update(self)
-        self.world.simulate()
+            update(self, steps)
+        self.world.simulate(steps)
 
 
 SCENES = [
     Scene('normal', Vec2(4, 4), World([
         Dynamic(4, 10, 3, 3),
-        Static(0, 30, 12, 3),
+        Static(0, 30, 16, 3),
     ], 1)),
     Scene('tunnel', Vec2(34, 4), World([
         Dynamic(4, 0, 3, 3, velocity=Vec2(0, 2)),
-        Static(0, 30, 12, 3)
+        Static(0, 30, 16, 3)
     ], 1)),
     Scene('hslide', Vec2(64, 4), World([
         Dynamic(-2, 20, 3, 3, velocity=Vec2(2, 0)),
-        Static(0, 30, 12, 3),
+        Static(0, 30, 16, 3),
     ], 1)),
     Scene('vslide', Vec2(94, 4), World([
         Dynamic(0, 0, 3, 3, velocity=Vec2(2, 0)),
@@ -169,17 +169,20 @@ SCENES = [
 ]
 
 
+
+
+DO_CLS = True
+DO_CLIP = True
+DO_SCENE_FRAME = False
+STEPS_PER_FRAME = 1
+
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
 
     for scene in SCENES:
-        scene.update()
-
-
-DO_CLS = True
-DO_CLIP = True
-DO_FRAME = False
+        for _ in range(STEPS_PER_FRAME):
+            scene.update(1 / STEPS_PER_FRAME)
 
 def draw():
     if DO_CLS:
@@ -190,7 +193,7 @@ def draw():
 
         pyxel.text(scene.offset.x, scene.offset.y, scene.name, 5)
 
-        if DO_FRAME:
+        if DO_SCENE_FRAME:
             pyxel.rectb(
                 scene.offset.x - 1,
                 scene.offset.y - 1,
@@ -214,22 +217,24 @@ def draw():
             if getattr(thing, 'had_collision', False):
                 color = 8   # red
 
-            pyxel.rectb(scene.offset.x + int(thing.x),
-                        scene.offset.y + int(thing.y),
-                        scene.offset.x + int(thing.x + thing.w - 1),
-                        scene.offset.y + int(thing.y + thing.h - 1),
+            pyxel.rectb(scene.offset.x + round(thing.x),
+                        scene.offset.y + round(thing.y),
+                        scene.offset.x + round(thing.x + thing.w - 1),
+                        scene.offset.y + round(thing.y + thing.h - 1),
                         color)
 
 
 
 @click.command()
 @click.option('-f', '--fps', type=int, default=4, show_default=True)
+@click.option('-s', '--steps-per-frame', type=int, default=10, show_default=True)
 @click.option('--cls/--no-cls', default=False, show_default=True)
 @click.option('--clip/--no-clip', default=True, show_default=True)
-def main(fps, cls, clip):
-    global DO_CLS, DO_CLIP
+def main(fps, cls, clip, steps_per_frame):
+    global DO_CLS, DO_CLIP, STEPS_PER_FRAME
     DO_CLS = cls
     DO_CLIP = clip
+    STEPS_PER_FRAME = steps_per_frame
     pyxel.init(160, 120, fps=fps)
     pyxel.run(update, draw)
 
