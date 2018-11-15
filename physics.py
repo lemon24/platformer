@@ -127,78 +127,109 @@ class World:
                 one.velocity.x = 0
 
 
-vsxvel_dynamic = Dynamic(100, 50, 4, 4)
 
-WORLD = World([
-    # normal
-    Dynamic(14, 20, 4, 4),
-    Static(10, 40, 12, 4),
-
-    # tunnel
-    Dynamic(44, 20, 4, 4),
-    Static(40, 80, 12, 4),
-
-    # vslide
-    Dynamic(70, 10, 4, 4, velocity=Vec2(2, 0)),
-    Static(82, 20, 4, 20),
-
-    # hslide
-    Dynamic(100, 30, 4, 4, velocity=Vec2(2, 0)),
-    Static(100, 40, 20, 4),
-
-    # vsxvel
-    vsxvel_dynamic,
-    Static(112, 60, 4, 20),
+def right_pulling_gravity(self):
+    self.world.things[0].velocity.x = 2
 
 
-], 1)
+@attr.s
+class Scene:
+    name = attr.ib()
+    offset = attr.ib()
+    world = attr.ib()
+    updates = attr.ib(default=attr.Factory(list))
 
-TEXT = [
-    (10, 10, 'normal'),
-    (40, 10, 'tunnel'),
-    (70, 10, 'vslide'),
-    (100, 10, 'hslide'),
-    (100, 50, 'vsxvel'),
+    def update(self):
+        for update in self.updates:
+            update(self)
+        self.world.simulate()
 
+
+SCENES = [
+    Scene('normal', Vec2(4, 4), World([
+        Dynamic(4, 10, 3, 3),
+        Static(0, 30, 12, 3),
+    ], 1)),
+    Scene('tunnel', Vec2(34, 4), World([
+        Dynamic(4, 0, 3, 3, velocity=Vec2(0, 2)),
+        Static(0, 30, 12, 3)
+    ], 1)),
+    Scene('hslide', Vec2(64, 4), World([
+        Dynamic(-2, 20, 3, 3, velocity=Vec2(2, 0)),
+        Static(0, 30, 12, 3),
+    ], 1)),
+    Scene('vslide', Vec2(94, 4), World([
+        Dynamic(0, 0, 3, 3, velocity=Vec2(2, 0)),
+        Static(12, 12, 3, 20),
+    ], 1)),
+    Scene('vsxvel', Vec2(124, 4), World([
+        Dynamic(0, 0, 3, 3),
+        Static(12, 12, 3, 20),
+    ], 1), [right_pulling_gravity]),
 ]
 
-DO_CLS = True
 
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
 
-    # right-pulling gravity
-    vsxvel_dynamic.velocity.x = 2
+    for scene in SCENES:
+        scene.update()
 
-    WORLD.simulate()
+
+DO_CLS = True
+DO_CLIP = True
+DO_FRAME = False
 
 def draw():
     if DO_CLS:
         pyxel.cls(0)
-    for x, y, text in TEXT:
-        pyxel.text(x, y, text, 5)
-    for thing in WORLD.things:
-        if hasattr(thing, 'velocity'):
-            color = 2   # purple
-        else:
-            color = 1   # blue
-        if getattr(thing, 'had_collision', False):
-            color = 8   # red
-        pyxel.rectb(int(thing.x),
-                    int(thing.y),
-                    int(thing.x + thing.w - 1),
-                    int(thing.y + thing.h - 1),
-                    color)
+
+    for scene in SCENES:
+        pyxel.clip()
+
+        pyxel.text(scene.offset.x, scene.offset.y, scene.name, 5)
+
+        if DO_FRAME:
+            pyxel.rectb(
+                scene.offset.x - 1,
+                scene.offset.y - 1,
+                scene.offset.x + 24 + 1 - 1,
+                scene.offset.y + 48 + 1 - 1,
+                1)
+
+        if DO_CLIP:
+            pyxel.clip(
+                scene.offset.x - 0,
+                scene.offset.y - 0,
+                scene.offset.x + 24 + 0 - 1,
+                scene.offset.y + 48 + 0 - 1,
+            )
+
+        for thing in scene.world.things:
+            if hasattr(thing, 'velocity'):
+                color = 2   # purple
+            else:
+                color = 1   # blue
+            if getattr(thing, 'had_collision', False):
+                color = 8   # red
+
+            pyxel.rectb(scene.offset.x + int(thing.x),
+                        scene.offset.y + int(thing.y),
+                        scene.offset.x + int(thing.x + thing.w - 1),
+                        scene.offset.y + int(thing.y + thing.h - 1),
+                        color)
 
 
 
 @click.command()
 @click.option('-f', '--fps', type=int, default=4, show_default=True)
-@click.option('--cls/--no-cls', default=True, show_default=True)
-def main(fps, cls):
-    global DO_CLS
+@click.option('--cls/--no-cls', default=False, show_default=True)
+@click.option('--clip/--no-clip', default=True, show_default=True)
+def main(fps, cls, clip):
+    global DO_CLS, DO_CLIP
     DO_CLS = cls
+    DO_CLIP = clip
     pyxel.init(160, 120, fps=fps)
     pyxel.run(update, draw)
 
