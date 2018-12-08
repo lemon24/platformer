@@ -4,7 +4,7 @@ import abc
 import attr
 import pyxel
 
-from physics import Static, Dynamic, World
+from physics import Static, Dynamic, World, Vec2
 
 
 class GraphicsComponent(abc.ABC):
@@ -189,7 +189,7 @@ class GuyInputComponent(InputComponent):
 HORIZONTAL_VELOCITY = 1.2
 MAX_JUMP_FRAME = 5
 JUMP_VELOCITY = -3.6
-GRAVITY = .5
+GRAVITY = Vec2(0, .5)
 
 
 @attr.s

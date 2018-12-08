@@ -77,7 +77,7 @@ class Dynamic(Rect):
 @attr.s
 class World:
     things = attr.ib(default=attr.Factory(list), converter=list)
-    gravity = attr.ib(default=0)
+    gravity = attr.ib(default=attr.Factory(lambda: Vec2(0, 1)))
 
     @property
     def static_things(self):
@@ -112,7 +112,8 @@ class World:
 
             one.had_collision = False
 
-            one.velocity.y += self.gravity * steps
+            one.velocity.x += self.gravity.x * steps
+            one.velocity.y += self.gravity.y * steps
 
             one.y += one.velocity.y * steps
             if self.check_dynamic_static_collision(one):
@@ -127,21 +128,13 @@ class World:
                 one.velocity.x = 0
 
 
-
-def right_pulling_gravity(self, steps):
-    self.world.things[0].velocity.x = 2
-
-
 @attr.s
 class Scene:
     name = attr.ib()
     offset = attr.ib()
     world = attr.ib()
-    updates = attr.ib(default=attr.Factory(list))
 
     def update(self, steps=1):
-        for update in self.updates:
-            update(self, steps)
         self.world.simulate(steps)
 
 
@@ -149,23 +142,23 @@ SCENES = [
     Scene('normal', Vec2(4, 4), World([
         Dynamic(4, 10, 3, 3),
         Static(0, 30, 16, 3),
-    ], 1)),
+    ])),
     Scene('tunnel', Vec2(34, 4), World([
         Dynamic(4, 0, 3, 3, velocity=Vec2(0, 2)),
         Static(0, 30, 16, 3)
-    ], 1)),
+    ])),
     Scene('hslide', Vec2(64, 4), World([
         Dynamic(-2, 20, 3, 3, velocity=Vec2(2, 0)),
         Static(0, 30, 16, 3),
-    ], 1)),
+    ])),
     Scene('vslide', Vec2(94, 4), World([
         Dynamic(0, 0, 3, 3, velocity=Vec2(2, 0)),
         Static(12, 12, 3, 20),
-    ], 1)),
+    ])),
     Scene('vsxvel', Vec2(124, 4), World([
         Dynamic(0, 0, 3, 3),
         Static(12, 12, 3, 20),
-    ], 1), [right_pulling_gravity]),
+    ], Vec2(1, 1))),
 ]
 
 
@@ -227,7 +220,7 @@ def draw():
 
 @click.command()
 @click.option('-f', '--fps', type=int, default=4, show_default=True)
-@click.option('-s', '--steps-per-frame', type=int, default=10, show_default=True)
+@click.option('-s', '--steps-per-frame', type=int, default=1, show_default=True)
 @click.option('--cls/--no-cls', default=False, show_default=True)
 @click.option('--clip/--no-clip', default=True, show_default=True)
 def main(fps, cls, clip, steps_per_frame):
