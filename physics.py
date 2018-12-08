@@ -29,6 +29,8 @@ Issues:
 
 """
 
+from math import ceil
+
 import attr
 import pyxel
 import click
@@ -106,18 +108,26 @@ class World:
                 return True
         return False
 
-    def simulate(self, steps_per_frame=1):
+    def simulate(self, steps_per_frame=1, sweep=True):
         for one in self.dynamic_things:
-            self.simulate_one(one, steps_per_frame)
+            self.simulate_one(one, steps_per_frame, sweep)
 
-    def simulate_one(self, one, steps_per_frame):
+    def simulate_one(self, one, steps_per_frame, sweep):
+        if sweep:
+            new_x = one.x + one.velocity.x + self.gravity.x
+            new_y = one.y + one.velocity.y + self.gravity.y
+            length = ((one.x - new_x) ** 2 + (one.y - new_y) ** 2) ** .5
+            sweep_length = min(one.w, one.h) / 2
+            sweep_steps = ceil(length / sweep_length)
+            steps_per_frame *= sweep_steps
+
         one.had_collision = False
         for _ in range(steps_per_frame):
-            had_collision = self._simulate_one(one, 1 / steps_per_frame)
+            had_collision = self.simulate_one_substep(one, 1 / steps_per_frame)
             if had_collision:
                 one.had_collision = True
 
-    def _simulate_one(self, one, steps):
+    def simulate_one_substep(self, one, steps):
         one.old_position = one.position
 
         had_collision = False
@@ -145,8 +155,8 @@ class Scene:
     offset = attr.ib()
     world = attr.ib()
 
-    def update(self, steps_per_frame=1):
-        self.world.simulate(steps_per_frame)
+    def update(self, steps_per_frame, sweep):
+        self.world.simulate(steps_per_frame, sweep)
 
 
 SCENES = [
@@ -179,13 +189,15 @@ DO_CLS = True
 DO_CLIP = True
 DO_SCENE_FRAME = False
 STEPS_PER_FRAME = 1
+SWEEP = True
+
 
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
 
     for scene in SCENES:
-        scene.update(STEPS_PER_FRAME)
+        scene.update(STEPS_PER_FRAME, SWEEP)
 
 
 def draw():
@@ -232,13 +244,15 @@ def draw():
 @click.command()
 @click.option('-f', '--fps', type=int, default=4, show_default=True)
 @click.option('-s', '--steps-per-frame', type=int, default=1, show_default=True)
+@click.option('--sweep/--no-sweep', default=True, show_default=True)
 @click.option('--cls/--no-cls', default=False, show_default=True)
 @click.option('--clip/--no-clip', default=True, show_default=True)
-def main(fps, cls, clip, steps_per_frame):
-    global DO_CLS, DO_CLIP, STEPS_PER_FRAME
+def main(fps, cls, clip, steps_per_frame, sweep):
+    global DO_CLS, DO_CLIP, STEPS_PER_FRAME, SWEEP
     DO_CLS = cls
     DO_CLIP = clip
     STEPS_PER_FRAME = steps_per_frame
+    SWEEP = sweep
     pyxel.init(160, 120, fps=fps)
     pyxel.run(update, draw)
 
