@@ -225,6 +225,12 @@ def draw():
     if DO_CLS:
         pyxel.cls(0)
 
+    status = ' '.join([
+        '--steps-per-frame {}'.format(STEPS_PER_FRAME),
+        '--sweep' if SWEEP else '--no-sweep',
+    ])
+    pyxel.text(4, 108, status, 5)
+
     for scene in SCENES:
         pyxel.clip()
 
