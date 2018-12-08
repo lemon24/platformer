@@ -113,15 +113,32 @@ class World:
             self.simulate_one(one, steps_per_frame, sweep)
 
     def simulate_one(self, one, steps_per_frame, sweep):
+        sweep_steps = 1
+
         if sweep:
             new_x = one.x + one.velocity.x + self.gravity.x
             new_y = one.y + one.velocity.y + self.gravity.y
             length = ((one.x - new_x) ** 2 + (one.y - new_y) ** 2) ** .5
+            # hardcoded to half of the smallest dimension, could be better
             sweep_length = min(one.w, one.h) / 2
             sweep_steps = ceil(length / sweep_length)
-            steps_per_frame *= sweep_steps
 
-        one.had_collision = False
+        dummy = Dynamic(one.x, one.y, one.w, one.h, Vec2(one.velocity.x, one.velocity.y))
+
+        self.simulate_one_step(dummy,  steps_per_frame * sweep_steps)
+
+        if sweep and dummy.had_collision:
+            # hardcoded to half a pixel, could be better
+            sweep_length = .5
+            sweep_steps = ceil(length / sweep_length)
+            self.simulate_one_step(one, steps_per_frame * sweep_steps)
+        else:
+            one.position = dummy.position
+            one.velocity = dummy.velocity
+            one.had_collision = dummy.had_collision
+
+    def simulate_one_step(self, one, steps_per_frame):
+        had_collision = False
         for _ in range(steps_per_frame):
             had_collision = self.simulate_one_substep(one, 1 / steps_per_frame)
             if had_collision:

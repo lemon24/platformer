@@ -209,8 +209,6 @@ class GuyGraphicsComponent(GraphicsComponent):
 class Guy(GuyInputComponent, GuyGraphicsComponent, PhysicsComponent, Dynamic): pass
 
 
-STEPS_PER_FRAME = 10
-
 def update():
     if pyxel.btnp(pyxel.KEY_Q):
         pyxel.quit()
@@ -220,7 +218,7 @@ def update():
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
 
-    WORLD.simulate(STEPS_PER_FRAME)
+    WORLD.simulate()
 
 
 
