@@ -106,26 +106,33 @@ class World:
                 return True
         return False
 
-    def simulate(self, steps=1):
+    def simulate(self, steps_per_frame=1):
         for one in self.dynamic_things:
-            one.old_position = one.position
+            self.simulate_one(one, steps_per_frame)
 
-            one.had_collision = False
+    def simulate_one(self, one, steps_per_frame):
+        for _ in range(steps_per_frame):
+            self._simulate_one(one, 1 / steps_per_frame)
 
-            one.velocity.x += self.gravity.x * steps
-            one.velocity.y += self.gravity.y * steps
+    def _simulate_one(self, one, steps):
+        one.old_position = one.position
 
-            one.y += one.velocity.y * steps
-            if self.check_dynamic_static_collision(one):
-                one.had_collision = True
-                one.y = one.old_position.y
-                one.velocity.y = 0
+        one.had_collision = False
 
-            one.x += one.velocity.x * steps
-            if self.check_dynamic_static_collision(one):
-                one.had_collision = True
-                one.x = one.old_position.x
-                one.velocity.x = 0
+        one.velocity.x += self.gravity.x * steps
+        one.velocity.y += self.gravity.y * steps
+
+        one.y += one.velocity.y * steps
+        if self.check_dynamic_static_collision(one):
+            one.had_collision = True
+            one.y = one.old_position.y
+            one.velocity.y = 0
+
+        one.x += one.velocity.x * steps
+        if self.check_dynamic_static_collision(one):
+            one.had_collision = True
+            one.x = one.old_position.x
+            one.velocity.x = 0
 
 
 @attr.s
@@ -134,8 +141,8 @@ class Scene:
     offset = attr.ib()
     world = attr.ib()
 
-    def update(self, steps=1):
-        self.world.simulate(steps)
+    def update(self, steps_per_frame=1):
+        self.world.simulate(steps_per_frame)
 
 
 SCENES = [
@@ -174,8 +181,8 @@ def update():
         pyxel.quit()
 
     for scene in SCENES:
-        for _ in range(STEPS_PER_FRAME):
-            scene.update(1 / STEPS_PER_FRAME)
+        scene.update(STEPS_PER_FRAME)
+
 
 def draw():
     if DO_CLS:

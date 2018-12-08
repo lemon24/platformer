@@ -220,8 +220,7 @@ def update():
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
 
-    for _ in range(STEPS_PER_FRAME):
-        WORLD.simulate(1 / STEPS_PER_FRAME)
+    WORLD.simulate(STEPS_PER_FRAME)
 
 
 
