@@ -180,6 +180,10 @@ SCENES = [
         Dynamic(0, 0, 3, 3),
         Static(12, 12, 3, 20),
     ], Vec2(1, 1))),
+    Scene('tnlbig', Vec2(34, 56), World([
+        Dynamic(4, -4, 8, 8, velocity=Vec2(0, 20)),
+        Static(0, 30, 16, 3)
+    ])),
 ]
 
 
