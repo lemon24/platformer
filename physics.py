@@ -2,29 +2,31 @@
 
 Implements gravity and collision detection.
 
-Features:
+The World class implements the main logic.
 
-* map collision detection
-* vertical movement (2nd degree polynomial)
-    * gravity
-    * vertical velocity
+The World contains a list of entities. All entities are rectangles that
+cannot be rotated (axis-aligned bounding boxes).
 
-Issues:
+There are 2 kinds of entities:
 
-1.  Transition from falling to standing flips back and forth a few times
-    until the object stabilizes from being pushed out of the ground due to
-    collisions; visible on the animation. Possible solutions:
+Static
+    Does not move. Does not have velocity. Does not collide with other static
+    bodies.
 
-    * push the object immediately next to the ground instead of back
-        to its original location
-    * run the physics simulation with a very small timestep (fraction of
-        a frame) for a few times to allow the object to stabilize;
-        probably means decoupling it from the fixed(?) timestep update()
-        is called with
+Dynamic:
+    Moves according to its velocity. Collides with static bodies. Does not
+    collide with other dynamic bodies.
 
-2.  Jumping/falling is too fast; GRAVITY <1 makes flipping between states
-    persistent (the object never stabilizes). Solution: Do physics with
-    floats, convert to int only when drawing.
+Collision are detected by sweeping the object's path a factor of its size
+at a time; this should catch most collisions, but won't catch all of them,
+especially for larger objects. When a collision happens, the sweep is
+repeated/resolved with a sub-unit step.
+
+Collisions are resolved first on the vertical axis, then on the horizontal one.
+
+Known issues:
+
+1.  Objects' corners might tunnel through one another.
 
 
 """
@@ -34,7 +36,6 @@ from math import ceil
 import attr
 import pyxel
 import click
-
 
 
 @attr.s
@@ -73,7 +74,6 @@ class Dynamic(Rect):
     velocity = attr.ib(default=attr.Factory(Vec2))
     old_position = attr.ib(default=attr.Factory(Vec2))
     had_collision = attr.ib(default=False)
-
 
 
 @attr.s
@@ -166,14 +166,12 @@ class World:
 
         return had_collision
 
+
 @attr.s
 class Scene:
     name = attr.ib()
     offset = attr.ib()
     world = attr.ib()
-
-    def update(self, steps_per_frame, sweep):
-        self.world.simulate(steps_per_frame, sweep)
 
 
 SCENES = [
@@ -204,8 +202,6 @@ SCENES = [
 ]
 
 
-
-
 DO_CLS = True
 DO_CLIP = True
 DO_SCENE_FRAME = False
@@ -218,7 +214,7 @@ def update():
         pyxel.quit()
 
     for scene in SCENES:
-        scene.update(STEPS_PER_FRAME, SWEEP)
+        scene.world.simulate(STEPS_PER_FRAME, SWEEP)
 
 
 def draw():
@@ -267,7 +263,6 @@ def draw():
                         color)
 
 
-
 @click.command()
 @click.option('-f', '--fps', type=int, default=4, show_default=True)
 @click.option('-s', '--steps-per-frame', type=int, default=1, show_default=True)
@@ -282,6 +277,7 @@ def main(fps, cls, clip, steps_per_frame, sweep):
     SWEEP = sweep
     pyxel.init(160, 120, fps=fps)
     pyxel.run(update, draw)
+
 
 if __name__ == '__main__':
     main()
