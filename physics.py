@@ -111,29 +111,33 @@ class World:
             self.simulate_one(one, steps_per_frame)
 
     def simulate_one(self, one, steps_per_frame):
+        one.had_collision = False
         for _ in range(steps_per_frame):
-            self._simulate_one(one, 1 / steps_per_frame)
+            had_collision = self._simulate_one(one, 1 / steps_per_frame)
+            if had_collision:
+                one.had_collision = True
 
     def _simulate_one(self, one, steps):
         one.old_position = one.position
 
-        one.had_collision = False
+        had_collision = False
 
         one.velocity.x += self.gravity.x * steps
         one.velocity.y += self.gravity.y * steps
 
         one.y += one.velocity.y * steps
         if self.check_dynamic_static_collision(one):
-            one.had_collision = True
+            had_collision = True
             one.y = one.old_position.y
             one.velocity.y = 0
 
         one.x += one.velocity.x * steps
         if self.check_dynamic_static_collision(one):
-            one.had_collision = True
+            had_collision = True
             one.x = one.old_position.x
             one.velocity.x = 0
 
+        return had_collision
 
 @attr.s
 class Scene:
