@@ -72,10 +72,10 @@ def parse_map(string, tile_size):
 
 TILE_SIZE = 8
 
-MAP = parse_map("""
+MAP_ONE = parse_map("""
 
 t . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . t t t t .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
@@ -84,11 +84,32 @@ t . . . . . . . . . . . . . . . . . . .
 . . t t t . . . . . . t t t t t t . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . @ . . . .
-. t t t t t t t t t t t t t t t t t t .
+. t t t t t t t t t t t t t t t t t . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . . . . . t
+. . . . . . . . . . . . . . . . . . t t
+
+""", TILE_SIZE)
+
+
+MAP_TWO = parse_map("""
+
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . t t t t . . . . . . . . .
+. . . . @ . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. t t t t t . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . @ . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . t t t . . .
+. . . . . . . . . . . . . . . . . . . .
 
 """, TILE_SIZE)
 
@@ -214,6 +235,8 @@ def update():
         pyxel.quit()
     if pyxel.btnp(pyxel.KEY_C):
         cycle_camera()
+    if pyxel.btnp(pyxel.KEY_Z):
+        cycle_map()
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
@@ -255,16 +278,24 @@ def filter_entities(entities, *classinfos):
 
 pyxel.init(SCREEN_W, SCREEN_H)
 
-GUY = Guy(x=MAP.spawn_points[0][0], y=MAP.spawn_points[0][1], w=3, h=7)
-TWO = Guy(x=MAP.spawn_points[1][0], y=MAP.spawn_points[1][1], w=3, h=7,
+GUY = Guy(x=MAP_ONE.spawn_points[0][0], y=MAP_ONE.spawn_points[0][1], w=3, h=7)
+TWO = Guy(x=MAP_ONE.spawn_points[1][0], y=MAP_ONE.spawn_points[1][1], w=3, h=7,
           color=3,
           keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
 
-ENTITIES = [GUY, ] + MAP.tiles
 
+MAP_ITER = itertools.cycle([MAP_ONE, MAP_TWO])
 
-WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
+def cycle_map():
+    global MAP, ENTITIES, WORLD
+    MAP = next(MAP_ITER)
+    ENTITIES = [GUY, ] + MAP.tiles
+    WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
 
+MAP = None
+ENTITIES = None
+WORLD = None
+cycle_map()
 
 
 pyxel.run(update, draw)
