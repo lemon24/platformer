@@ -41,6 +41,35 @@ class Map:
     spawn_points = attr.ib(factory=list)
     w = attr.ib(default=0)
     h = attr.ib(default=0)
+    
+@attr.s
+class MapList:
+    maps = attr.ib(factory=list)
+    current_index = attr.ib(default=0)
+    
+    @property
+    def current(self):
+        return self.maps[self.current_index]
+    
+    @property
+    def previous(self):
+        if self.current_index > 0:
+            return self.maps[self.current_index - 1]
+        return None
+    
+    @property
+    def next(self):
+        if self.current_index < len(self.maps) - 1:
+            return self.maps[self.current_index + 1]
+        return None
+    
+    def move_back(self):
+        if self.previous:
+            self.current_index -= 1
+    
+    def move_forward(self):
+        if self.next:
+            self.current_index += 1
 
 
 def parse_map(string, tile_size):
@@ -69,10 +98,11 @@ def parse_map(string, tile_size):
     return Map(tiles, spawn_points, width * tile_size, height * tile_size)
 
 
-
 TILE_SIZE = 8
 
-MAP_ONE = parse_map("""
+MAP_LIST = MapList([
+    
+parse_map("""
 
 t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . t t t t .
@@ -90,10 +120,9 @@ t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . t t
 
-""", TILE_SIZE)
+""", TILE_SIZE),
 
-
-MAP_TWO = parse_map("""
+parse_map("""
 
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
@@ -112,6 +141,8 @@ MAP_TWO = parse_map("""
 . . . . . . . . . . . . . . . . . . . .
 
 """, TILE_SIZE)
+
+])
 
 
 SCREEN_W, SCREEN_H = 160, 120
@@ -236,7 +267,11 @@ def update():
     if pyxel.btnp(pyxel.KEY_C):
         cycle_camera()
     if pyxel.btnp(pyxel.KEY_Z):
-        cycle_map()
+        MAP_LIST.move_back()
+        update_entities()
+    if pyxel.btnp(pyxel.KEY_X):
+        MAP_LIST.move_forward()
+        update_entities()
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
@@ -249,6 +284,7 @@ def center_on_guy():
     return -GUY.x + SCREEN_W // 2, -GUY.y + SCREEN_H // 2
 
 def center_on_map():
+    MAP = MAP_LIST.current
     return - MAP.w // 2 + SCREEN_W // 2, - MAP.h // 2 + SCREEN_H // 2
 
 
@@ -278,24 +314,22 @@ def filter_entities(entities, *classinfos):
 
 pyxel.init(SCREEN_W, SCREEN_H)
 
-GUY = Guy(x=MAP_ONE.spawn_points[0][0], y=MAP_ONE.spawn_points[0][1], w=3, h=7)
-TWO = Guy(x=MAP_ONE.spawn_points[1][0], y=MAP_ONE.spawn_points[1][1], w=3, h=7,
+GUY = Guy(x=MAP_LIST.current.spawn_points[0][0], y=MAP_LIST.current.spawn_points[0][1], w=3, h=7)
+TWO = Guy(x=MAP_LIST.current.spawn_points[1][0], y=MAP_LIST.current.spawn_points[1][1], w=3, h=7,
           color=3,
           keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
 
 
-MAP_ITER = itertools.cycle([MAP_ONE, MAP_TWO])
-
-def cycle_map():
-    global MAP, ENTITIES, WORLD
-    MAP = next(MAP_ITER)
-    ENTITIES = [GUY, ] + MAP.tiles
-    WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
-
-MAP = None
 ENTITIES = None
 WORLD = None
-cycle_map()
+
+def update_entities():
+    global ENTITIES, WORLD
+    ENTITIES = [GUY, ] + MAP_LIST.current.tiles
+    WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
+
+update_entities()
+
 
 
 pyxel.run(update, draw)
