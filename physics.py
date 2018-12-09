@@ -17,7 +17,7 @@ Dynamic:
     Moves according to its velocity. Collides with static bodies. Does not
     collide with other dynamic bodies.
 
-Collision are detected by sweeping the object's path a factor of its size
+Collisions are detected by sweeping the object's path a factor of its size
 at a time; this should catch most collisions, but won't catch all of them,
 especially for larger objects. When a collision happens, the sweep is
 repeated/resolved with a sub-unit step.
