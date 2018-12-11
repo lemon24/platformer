@@ -24,15 +24,30 @@ class PhysicsComponent(abc.ABC):
     pass
 
 
+@attr.s
+class TileGraphicsComponent(GraphicsComponent):
 
-class Tile(GraphicsComponent, PhysicsComponent, Static):
+    fill = attr.ib(default=True)
+    color = attr.ib(default=1)
 
     def render(self, offset_x, offset_y):
-        pyxel.rect(offset_x + self.x,
-                   offset_y + self.y,
-                   offset_x + self.r - 1,
-                   offset_y + self.b - 1,
-                   1)
+        func = pyxel.rect if self.fill else pyxel.rectb
+        func(offset_x + self.x,
+             offset_y + self.y,
+             offset_x + self.r - 1,
+             offset_y + self.b - 1,
+             self.color)
+
+@attr.s
+class Tile(TileGraphicsComponent, PhysicsComponent, Static):
+
+    def to_shadow_tile(self, **kwargs):
+        return ShadowTile(x=self.x, y=self.y, w=self.w, h=self.h, **kwargs)
+
+
+@attr.s
+class ShadowTile(TileGraphicsComponent, Static):
+    pass
 
 
 @attr.s
@@ -41,32 +56,32 @@ class Map:
     spawn_points = attr.ib(factory=list)
     w = attr.ib(default=0)
     h = attr.ib(default=0)
-    
+
 @attr.s
 class MapList:
     maps = attr.ib(factory=list)
     current_index = attr.ib(default=0)
-    
+
     @property
     def current(self):
         return self.maps[self.current_index]
-    
+
     @property
     def previous(self):
         if self.current_index > 0:
             return self.maps[self.current_index - 1]
         return None
-    
+
     @property
     def next(self):
         if self.current_index < len(self.maps) - 1:
             return self.maps[self.current_index + 1]
         return None
-    
+
     def move_back(self):
         if self.previous:
             self.current_index -= 1
-    
+
     def move_forward(self):
         if self.next:
             self.current_index += 1
@@ -89,7 +104,12 @@ def parse_map(string, tile_size):
             elif char == '@':
                 spawn_points.append((i * tile_size, j * tile_size))
             elif char == 't':
-                tiles.append(Tile(i * tile_size, j * tile_size, tile_size, tile_size))
+                tiles.append(Tile(
+                    x=i * tile_size,
+                    y=j * tile_size,
+                    w=tile_size,
+                    h=tile_size,
+                ))
             else:
                 assert False, "unknown tile char: %r" % char
 
@@ -101,9 +121,8 @@ def parse_map(string, tile_size):
 TILE_SIZE = 8
 
 MAP_LIST = MapList([
-    
-parse_map("""
 
+parse_map("""
 t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . t t t t .
 . . . . . . . . . . . . . . . . . . . .
@@ -119,11 +138,9 @@ t . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . t t
-
 """, TILE_SIZE),
 
 parse_map("""
-
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . . . . . . .
@@ -139,8 +156,25 @@ parse_map("""
 . . . . . . . . . . . . . . . . . . . .
 . . . . . . . . . . . . . . t t t . . .
 . . . . . . . . . . . . . . . . . . . .
+""", TILE_SIZE),
 
-""", TILE_SIZE)
+parse_map("""
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . t t t . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . @ . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . @ . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+. . . . t t t t t t t t t . . . . . . .
+. . . . . . . . . . . . . . . . . . . .
+""", TILE_SIZE),
 
 ])
 
@@ -266,12 +300,13 @@ def update():
         pyxel.quit()
     if pyxel.btnp(pyxel.KEY_C):
         cycle_camera()
-    if pyxel.btnp(pyxel.KEY_Z):
+
+    if pyxel.btnr(pyxel.KEY_Z):
         MAP_LIST.move_back()
-        update_entities()
-    if pyxel.btnp(pyxel.KEY_X):
+    if pyxel.btnr(pyxel.KEY_X):
         MAP_LIST.move_forward()
-        update_entities()
+
+    update_entities()
 
     for entity in filter_entities(ENTITIES, InputComponent):
         entity.process_input()
@@ -325,7 +360,27 @@ WORLD = None
 
 def update_entities():
     global ENTITIES, WORLD
-    ENTITIES = [GUY, ] + MAP_LIST.current.tiles
+    ENTITIES = []
+
+    # TODO: we shouldn't process input here
+    # TODO: avoid copying tiles needlessly (a real ECS wouldn't?)
+    if pyxel.btn(pyxel.KEY_Z):
+        if MAP_LIST.previous:
+            ENTITIES.extend(
+                t.to_shadow_tile(fill=False, color=5)
+                for t in MAP_LIST.previous.tiles
+            )
+
+    ENTITIES.extend(MAP_LIST.current.tiles)
+    ENTITIES.append(GUY)
+
+    if pyxel.btn(pyxel.KEY_X):
+        if MAP_LIST.next:
+            ENTITIES.extend(
+                t.to_shadow_tile(fill=False, color=7)
+                for t in MAP_LIST.next.tiles
+            )
+
     WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
 
 update_entities()
