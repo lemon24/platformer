@@ -32,23 +32,23 @@ Known issues:
 """
 
 from math import ceil
+from dataclasses import dataclass, field
 
-import attr
 import pyxel
 import click
 
 
-@attr.s
+@dataclass
 class Vec2:
-    x = attr.ib(default=0)
-    y = attr.ib(default=0)
+    x: float = 0
+    y: float = 0
 
-@attr.s
+@dataclass
 class Rect:
-    x = attr.ib(default=0)
-    y = attr.ib(default=0)
-    w = attr.ib(default=0)
-    h = attr.ib(default=0)
+    x: float = 0
+    y: float = 0
+    w: float = 0
+    h: float = 0
 
     @property
     def r(self):
@@ -69,17 +69,20 @@ class Rect:
 
 class Static(Rect): pass
 
-@attr.s
+@dataclass
 class Dynamic(Rect):
-    velocity = attr.ib(default=attr.Factory(Vec2))
-    old_position = attr.ib(default=attr.Factory(Vec2))
-    had_collision = attr.ib(default=False)
+    velocity: Vec2 = field(default_factory=Vec2)
+    old_position: Vec2 = field(default_factory=Vec2)
+    had_collision: bool = False
 
 
-@attr.s
+@dataclass
 class World:
-    things = attr.ib(default=attr.Factory(list), converter=list)
-    gravity = attr.ib(default=attr.Factory(lambda: Vec2(0, 1)))
+    things: list = field(default_factory=list)
+    gravity: Vec2 = field(default_factory=lambda: Vec2(0, 1))
+
+    def __post_init__(self):
+        self.things = list(self.things)
 
     @property
     def static_things(self):
@@ -167,11 +170,11 @@ class World:
         return had_collision
 
 
-@attr.s
+@dataclass
 class Scene:
-    name = attr.ib()
-    offset = attr.ib()
-    world = attr.ib()
+    name: str
+    offset: Vec2
+    world: World
 
 
 SCENES = [

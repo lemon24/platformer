@@ -1,8 +1,8 @@
 import itertools
 import abc
 import sys
+from dataclasses import dataclass, field
 
-import attr
 import pyxel
 
 from physics import Static, Dynamic, World, Vec2
@@ -25,11 +25,11 @@ class PhysicsComponent(abc.ABC):
     pass
 
 
-@attr.s
+@dataclass
 class TileGraphicsComponent(GraphicsComponent):
 
-    fill = attr.ib(default=True)
-    color = attr.ib(default=1)
+    fill: bool = True
+    color: int = 1
 
     def render(self, offset_x, offset_y):
         func = pyxel.rect if self.fill else pyxel.rectb
@@ -39,29 +39,29 @@ class TileGraphicsComponent(GraphicsComponent):
              self.h,
              self.color)
 
-@attr.s
+@dataclass
 class Tile(TileGraphicsComponent, PhysicsComponent, Static):
 
     def to_shadow_tile(self, **kwargs):
         return ShadowTile(x=self.x, y=self.y, w=self.w, h=self.h, **kwargs)
 
 
-@attr.s
+@dataclass
 class ShadowTile(TileGraphicsComponent, Static):
     pass
 
 
-@attr.s
+@dataclass
 class Map:
-    tiles = attr.ib(factory=list)
-    spawn_points = attr.ib(factory=list)
-    w = attr.ib(default=0)
-    h = attr.ib(default=0)
+    tiles: list = field(default_factory=list)
+    spawn_points: list = field(default_factory=list)
+    w: int = 0
+    h: int = 0
 
-@attr.s
+@dataclass
 class MapList:
-    maps = attr.ib(factory=list)
-    current_index = attr.ib(default=0)
+    maps: list = field(default_factory=list)
+    current_index: int = 0
 
     @property
     def current(self):
@@ -183,7 +183,7 @@ parse_map("""
 SCREEN_W, SCREEN_H = 160, 120
 
 
-@attr.s
+@dataclass
 class GuyInputComponent(InputComponent):
 
     """Implements moving based on input.
@@ -197,19 +197,19 @@ class GuyInputComponent(InputComponent):
     """
 
 
-    left_pressed = attr.ib(default=False)
-    right_pressed = attr.ib(default=False)
-    jump_pressed = attr.ib(default=False)
-    jump_pressed_now = attr.ib(default=False)
+    left_pressed: bool = False
+    right_pressed: bool = False
+    jump_pressed: bool = False
+    jump_pressed_now: bool = False
 
-    keymap = attr.ib(factory=lambda: dict(
+    keymap: dict = field(default_factory=lambda: dict(
         left=pyxel.KEY_LEFT,
         right=pyxel.KEY_RIGHT,
         jump=pyxel.KEY_CONTROL,
     ))
 
-    jump_frame = attr.ib(default=0)
-    _jump_state = attr.ib(default='falling')
+    jump_frame: int = 0
+    _jump_state: str = 'falling'
 
     @property
     def jump_state(self):
@@ -279,10 +279,10 @@ JUMP_VELOCITY = -3.6
 GRAVITY = Vec2(0, .5)
 
 
-@attr.s
+@dataclass
 class GuyGraphicsComponent(GraphicsComponent):
 
-    color = attr.ib(default=2)
+    color: int = 2
 
     def render(self, offset_x, offset_y):
         pyxel.rectb(round(offset_x + self.x),
@@ -292,7 +292,7 @@ class GuyGraphicsComponent(GraphicsComponent):
                     self.color)
 
 
-@attr.s
+@dataclass
 class Guy(GuyInputComponent, GuyGraphicsComponent, PhysicsComponent, Dynamic): pass
 
 
@@ -388,7 +388,6 @@ def update_entities():
     WORLD = World(filter_entities(ENTITIES, PhysicsComponent), GRAVITY)
 
 update_entities()
-
 
 
 pyxel.run(update, draw)
