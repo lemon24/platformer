@@ -1,5 +1,6 @@
 import itertools
 import abc
+import sys
 
 import attr
 import pyxel
@@ -350,6 +351,9 @@ def filter_entities(entities, *classinfos):
 pyxel.init(SCREEN_W, SCREEN_H)
 
 GUY = Guy(x=MAP_LIST.current.spawn_points[0][0], y=MAP_LIST.current.spawn_points[0][1], w=3, h=7)
+if sys.platform == "darwin":
+    GUY.keymap['jump'] = pyxel.KEY_SUPER
+
 TWO = Guy(x=MAP_LIST.current.spawn_points[1][0], y=MAP_LIST.current.spawn_points[1][1], w=3, h=7,
           color=3,
           keymap=dict(left=pyxel.KEY_A, right=pyxel.KEY_D, jump=pyxel.KEY_SPACE))
