@@ -34,8 +34,8 @@ class TileGraphicsComponent(GraphicsComponent):
         func = pyxel.rect if self.fill else pyxel.rectb
         func(offset_x + self.x,
              offset_y + self.y,
-             offset_x + self.r - 1,
-             offset_y + self.b - 1,
+             self.w,
+             self.h,
              self.color)
 
 @attr.s
@@ -286,8 +286,8 @@ class GuyGraphicsComponent(GraphicsComponent):
     def render(self, offset_x, offset_y):
         pyxel.rectb(round(offset_x + self.x),
                     round(offset_y + self.y),
-                    round(offset_x + self.x + self.w - 1),
-                    round(offset_y + self.y + self.h - 1),
+                    round(self.w),
+                    round(self.h),
                     self.color)
 
 

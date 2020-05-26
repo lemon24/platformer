@@ -236,16 +236,16 @@ def draw():
             pyxel.rectb(
                 scene.offset.x - 1,
                 scene.offset.y - 1,
-                scene.offset.x + 24 + 1 - 1,
-                scene.offset.y + 48 + 1 - 1,
+                24 + 1 - 1,
+                48 + 1 - 1,
                 1)
 
         if DO_CLIP:
             pyxel.clip(
                 scene.offset.x - 0,
                 scene.offset.y - 0,
-                scene.offset.x + 24 + 0 - 1,
-                scene.offset.y + 48 + 0 - 1,
+                24 + 0 - 1,
+                48 + 0 - 1,
             )
 
         for thing in scene.world.things:
@@ -258,8 +258,8 @@ def draw():
 
             pyxel.rectb(scene.offset.x + round(thing.x),
                         scene.offset.y + round(thing.y),
-                        scene.offset.x + round(thing.x + thing.w - 1),
-                        scene.offset.y + round(thing.y + thing.h - 1),
+                        round(thing.w),
+                        round(thing.h),
                         color)
 
 
